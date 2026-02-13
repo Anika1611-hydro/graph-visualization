@@ -2,11 +2,13 @@ import streamlit as st
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
 import numpy as np
 import networkx as nx
-from mpl_toolkits.mplot3d import Axes3D
 import os
+import plotly.graph_objects as go
+import plotly.express as px
 
 # Настройка страницы
 st.set_page_config(layout="wide")
@@ -39,12 +41,25 @@ with tab1:
         # Кнопка построения
         plot_button = st.button("Построить граф", type="primary")
         
-        # Отображение изображения
+        # Отображение изображения с подписью
         if os.path.exists('example.png'):
             try:
-                st.image('example.png', caption='Пример оформления', use_column_width=True)
+                st.image('example.png', use_column_width=True)
+                # Жирная и крупная подпись под изображением
+                st.markdown(
+                    "<p style='text-align: center; font-weight: bold; font-size: 18px;'>"
+                    "Пример оформления"
+                    "</p>", 
+                    unsafe_allow_html=True
+                )
             except:
-                st.image('example.png', caption='Пример оформления')
+                st.image('example.png')
+                st.markdown(
+                    "<p style='text-align: center; font-weight: bold;'>"
+                    "Пример оформления"
+                    "</p>", 
+                    unsafe_allow_html=True
+                )
     
     with col2:
         st.subheader("Таблица данных")
@@ -95,11 +110,11 @@ with tab1:
                             if not np.isnan(weight):
                                 G.add_edge(i, j, weight=weight)
                     
-                    # Создание фигуры
-                    fig = plt.figure(figsize=(10, 8))
-                    
                     if graph_type == "2D":
+                        # 2D визуализация с matplotlib
+                        fig = plt.figure(figsize=(10, 8))
                         ax = fig.add_subplot(111)
+                        
                         # Убираем тики
                         ax.set_xticks([])
                         ax.set_yticks([])
@@ -120,54 +135,120 @@ with tab1:
                             nx.draw_networkx_edges(G, pos, ax=ax, edge_color='r',
                                                   width=widths, alpha=0.7)
                         
-                        # Подписи узлов
+                        # Подписи узлов (увеличенный размер)
                         labels = {i: column_names[i] for i in G.nodes()}
-                        nx.draw_networkx_labels(G, pos, labels, ax=ax, font_size=8)
+                        nx.draw_networkx_labels(G, pos, labels, ax=ax, font_size=10, font_weight='bold')
                         
-                        # Подписи ребер
+                        # Подписи ребер (увеличенный размер)
                         edge_labels = {(u, v): f"{G[u][v]['weight']:.2f}" for u, v in G.edges()}
-                        nx.draw_networkx_edge_labels(G, pos, edge_labels, ax=ax, font_size=6)
+                        nx.draw_networkx_edge_labels(G, pos, edge_labels, ax=ax, font_size=9)
                         
-                        ax.set_title("2D визуализация графа")
+                        ax.set_title("2D визуализация графа", fontsize=14, fontweight='bold')
                         ax.axis('off')
                         
-                    else:  # 3D
-                        ax = fig.add_subplot(111, projection='3d')
-                        # Убираем тики
-                        ax.set_xticks([])
-                        ax.set_yticks([])
-                        ax.set_zticks([])
+                        plt.tight_layout()
+                        st.pyplot(fig)
                         
+                    else:  # 3D с plotly (интерактивный)
+                        # Создание позиций для 3D графа
                         pos_3d = nx.spring_layout(G, dim=3, seed=42)
                         
-                        # Извлечение координат
-                        xs = [pos_3d[node][0] for node in G.nodes()]
-                        ys = [pos_3d[node][1] for node in G.nodes()]
-                        zs = [pos_3d[node][2] for node in G.nodes()]
+                        # Создание интерактивного 3D графика с plotly
+                        fig = go.Figure()
                         
-                        # Рисование узлов
-                        ax.scatter(xs, ys, zs, c='lightblue', s=100, alpha=0.8)
+                        # Извлечение координат узлов
+                        node_x = []
+                        node_y = []
+                        node_z = []
+                        node_text = []
                         
-                        # Рисование ребер
+                        for node in G.nodes():
+                            x, y, z = pos_3d[node]
+                            node_x.append(x)
+                            node_y.append(y)
+                            node_z.append(z)
+                            node_text.append(column_names[node])
+                        
+                        # Добавление узлов
+                        fig.add_trace(go.Scatter3d(
+                            x=node_x, y=node_y, z=node_z,
+                            mode='markers+text',
+                            marker=dict(
+                                size=15,
+                                color='lightblue',
+                                line=dict(color='darkblue', width=2)
+                            ),
+                            text=node_text,
+                            textposition="top center",
+                            textfont=dict(size=12, color='black', family='Arial', weight='bold'),
+                            hoverinfo='text',
+                            name='Узлы'
+                        ))
+                        
+                        # Добавление ребер
                         for edge in G.edges():
-                            x = [pos_3d[edge[0]][0], pos_3d[edge[1]][0]]
-                            y = [pos_3d[edge[0]][1], pos_3d[edge[1]][1]]
-                            z = [pos_3d[edge[0]][2], pos_3d[edge[1]][2]]
+                            x0, y0, z0 = pos_3d[edge[0]]
+                            x1, y1, z1 = pos_3d[edge[1]]
+                            weight = G[edge[0]][edge[1]]['weight']
                             
-                            weight = abs(G[edge[0]][edge[1]]['weight'])
-                            ax.plot(x, y, z, color='r', alpha=0.7, 
-                                   linewidth=1 + 2 * weight)
+                            # Цвет в зависимости от знака корреляции
+                            color = 'red' if weight > 0 else 'blue'
+                            
+                            # Добавление линии ребра
+                            fig.add_trace(go.Scatter3d(
+                                x=[x0, x1, None], 
+                                y=[y0, y1, None], 
+                                z=[z0, z1, None],
+                                mode='lines',
+                                line=dict(
+                                    color=color,
+                                    width=2 + 5 * abs(weight),
+                                ),
+                                hoverinfo='text',
+                                text=f'Вес: {weight:.2f}',
+                                name=f'Ребро: {column_names[edge[0]]}-{column_names[edge[1]]}',
+                                showlegend=False
+                            ))
+                            
+                            # Добавление подписи веса посередине ребра
+                            mid_x = (x0 + x1) / 2
+                            mid_y = (y0 + y1) / 2
+                            mid_z = (z0 + z1) / 2
+                            
+                            fig.add_trace(go.Scatter3d(
+                                x=[mid_x], y=[mid_y], z=[mid_z],
+                                mode='text',
+                                text=[f'{weight:.2f}'],
+                                textposition="middle center",
+                                textfont=dict(size=10, color='black', family='Arial', weight='bold'),
+                                hoverinfo='none',
+                                showlegend=False
+                            ))
                         
-                        # Подписи узлов
-                        for i, node in enumerate(G.nodes()):
-                            ax.text(pos_3d[node][0], pos_3d[node][1], pos_3d[node][2], 
-                                   column_names[node], fontsize=8)
+                        # Настройка layout для интерактивности
+                        fig.update_layout(
+                            title=dict(
+                                text="3D визуализация графа",
+                                font=dict(size=16, weight='bold')
+                            ),
+                            scene=dict(
+                                xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, title=''),
+                                yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, title=''),
+                                zaxis=dict(showticklabels=False, showgrid=False, zeroline=False, title=''),
+                                bgcolor='white'
+                            ),
+                            width=800,
+                            height=600,
+                            showlegend=False,
+                            hovermode='closest'
+                        )
                         
-                        ax.set_title("3D визуализация графа")
-                    
-                    plt.tight_layout()
-                    st.pyplot(fig)
-                    
+                        # Добавление возможности вращения мышью
+                        config = {'scrollZoom': True, 'displayModeBar': True}
+                        
+                        # Отображение интерактивного графика
+                        st.plotly_chart(fig, use_container_width=True, config=config)
+                        
             except Exception as e:
                 st.error(f"Ошибка построения графа: {str(e)}")
 
