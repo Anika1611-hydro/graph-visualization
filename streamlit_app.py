@@ -8,7 +8,6 @@ import numpy as np
 import networkx as nx
 import os
 import plotly.graph_objects as go
-import plotly.express as px
 
 # Настройка страницы
 st.set_page_config(layout="wide")
@@ -180,10 +179,17 @@ with tab1:
                             ),
                             text=node_text,
                             textposition="top center",
-                            textfont=dict(size=12, color='black', family='Arial', weight='bold'),
+                            textfont=dict(
+                                size=12, 
+                                color='black', 
+                                family='Arial Black, Arial, sans-serif'  # Используем жирный шрифт через family
+                            ),
                             hoverinfo='text',
                             name='Узлы'
                         ))
+                        
+                        # Списки для хранения данных ребер
+                        edge_traces = []
                         
                         # Добавление ребер
                         for edge in G.edges():
@@ -205,8 +211,8 @@ with tab1:
                                     width=2 + 5 * abs(weight),
                                 ),
                                 hoverinfo='text',
-                                text=f'Вес: {weight:.2f}',
-                                name=f'Ребро: {column_names[edge[0]]}-{column_names[edge[1]]}',
+                                hovertext=f'Вес: {weight:.2f}',
+                                name=f'{column_names[edge[0]]}-{column_names[edge[1]]}',
                                 showlegend=False
                             ))
                             
@@ -220,7 +226,11 @@ with tab1:
                                 mode='text',
                                 text=[f'{weight:.2f}'],
                                 textposition="middle center",
-                                textfont=dict(size=10, color='black', family='Arial', weight='bold'),
+                                textfont=dict(
+                                    size=10, 
+                                    color='black',
+                                    family='Arial Black, Arial, sans-serif'  # Жирный шрифт для весов
+                                ),
                                 hoverinfo='none',
                                 showlegend=False
                             ))
@@ -229,22 +239,45 @@ with tab1:
                         fig.update_layout(
                             title=dict(
                                 text="3D визуализация графа",
-                                font=dict(size=16, weight='bold')
+                                font=dict(size=16, family='Arial Black, Arial, sans-serif')
                             ),
                             scene=dict(
-                                xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, title=''),
-                                yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, title=''),
-                                zaxis=dict(showticklabels=False, showgrid=False, zeroline=False, title=''),
+                                xaxis=dict(
+                                    showticklabels=False, 
+                                    showgrid=False, 
+                                    zeroline=False, 
+                                    title='',
+                                    backgroundcolor='white'
+                                ),
+                                yaxis=dict(
+                                    showticklabels=False, 
+                                    showgrid=False, 
+                                    zeroline=False, 
+                                    title='',
+                                    backgroundcolor='white'
+                                ),
+                                zaxis=dict(
+                                    showticklabels=False, 
+                                    showgrid=False, 
+                                    zeroline=False, 
+                                    title='',
+                                    backgroundcolor='white'
+                                ),
                                 bgcolor='white'
                             ),
                             width=800,
                             height=600,
                             showlegend=False,
-                            hovermode='closest'
+                            hovermode='closest',
+                            margin=dict(l=0, r=0, b=0, t=50)
                         )
                         
                         # Добавление возможности вращения мышью
-                        config = {'scrollZoom': True, 'displayModeBar': True}
+                        config = {
+                            'scrollZoom': True, 
+                            'displayModeBar': True,
+                            'modeBarButtonsToAdd': ['zoom3d', 'pan3d', 'orbit3d']
+                        }
                         
                         # Отображение интерактивного графика
                         st.plotly_chart(fig, use_container_width=True, config=config)
